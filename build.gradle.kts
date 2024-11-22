@@ -23,6 +23,9 @@ dependencies {
     // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
+    implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation(kotlin("reflect"))
 }
 

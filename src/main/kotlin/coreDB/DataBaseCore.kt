@@ -1,5 +1,6 @@
 package coreDBimport
 
+import coreDB.DataBase
 import kotlinx.serialization.KSerializer
 
 import kotlinx.serialization.json.*
@@ -9,7 +10,7 @@ class DataBaseCore<T : Any>(
     private val filePath: String,
     private val keyField: String,
     private val serializer: KSerializer<T>
-) {
+):DataBase<T> {
     private val indexPath = "$filePath.index"
 
     init {
@@ -19,14 +20,23 @@ class DataBaseCore<T : Any>(
     }
 
     // Создание новой базы данных (очистка файлов)
-    fun createDatabase() {
+    override fun createDatabase() {
         File(filePath).writeText("")
         File(indexPath).writeText("")
         println("Database created successfully.")
     }
 
+    override fun getAllRecords(): List<T> {
+        val records = mutableListOf<T>()
+        File(filePath).forEachLine { line ->
+            val record = Json.decodeFromString(serializer, line)
+            records.add(record)
+        }
+        return records
+    }
+
     // Добавление записи
-    fun addRecord(record: T): Boolean {
+    override fun addRecord(record: T): Boolean {
         val keyValue = record.getFieldValue(keyField)
         if (keyValue == null) {
             println("Key value is null. Record not added.")
@@ -50,7 +60,7 @@ class DataBaseCore<T : Any>(
     }
 
     // Удаление записи по значению поля
-    fun deleteRecordByField(field: String, value: Any?) {
+    override fun deleteRecordByField(field: String, value: Any?) {
         val tempFile = File("$filePath.tmp")
         val tempIndex = File("$indexPath.tmp")
         val file = File(filePath)
@@ -71,7 +81,7 @@ class DataBaseCore<T : Any>(
     }
 
     // Поиск записи по ключевому полю
-    fun searchByField(field: String, value: Any?): T? {
+    override fun searchByField(field: String, value: Any?): T? {
         var result: T? = null
         if (field != keyField) {
             // Обычный линейный поиск для неключевых полей
@@ -94,7 +104,7 @@ class DataBaseCore<T : Any>(
     }
 
     // Редактирование записи
-    fun editRecord(keyValue: Any, updatedRecord: T): Boolean {
+    override fun editRecord(keyValue: Any, updateRecord: T): Boolean {
         val tempFile = File("$filePath.tmp")
         val file = File(filePath)
         var updated = false
@@ -102,7 +112,7 @@ class DataBaseCore<T : Any>(
         file.forEachLine { line ->
             val record = Json.decodeFromString(serializer, line)
             if (record.getFieldValue(keyField) == keyValue) {
-                tempFile.appendText(Json.encodeToString(serializer, updatedRecord) + "\n")
+                tempFile.appendText(Json.encodeToString(serializer, updateRecord) + "\n")
                 updated = true
             } else {
                 tempFile.appendText(line + "\n")
@@ -116,13 +126,13 @@ class DataBaseCore<T : Any>(
     }
 
     // Создание резервной копии
-    fun createBackup(backupPath: String) {
+    override fun createBackup(backupPath: String) {
         File(filePath).copyTo(File(backupPath), overwrite = true)
         println("Backup created successfully.")
     }
 
     // Восстановление из резервной копии
-    fun restoreFromBackup(backupPath: String) {
+    override fun restoreFromBackup(backupPath: String) {
         File(backupPath).copyTo(File(filePath), overwrite = true)
         rebuildIndex()
         println("Database restored from backup.")
