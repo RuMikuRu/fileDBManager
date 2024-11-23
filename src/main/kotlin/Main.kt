@@ -10,6 +10,9 @@ import model.People
 import model.Role
 import ui.elements.TopBarPrimary
 import ui.forms.FormAddUser
+import ui.forms.FormDeletePeople
+import ui.forms.FormEditUser
+import ui.forms.FormSearchPeople
 import ui.screen.DataBaseViewScreen
 import viewModel.MainScreenViewModel
 
@@ -34,6 +37,9 @@ val mockUserList = listOf(
 @Preview
 fun App() {
     var isOpenAddUserForm by remember { mutableStateOf(false) }
+    var isOpenDeleteUserForm by remember { mutableStateOf(false) }
+    var isOpenSearchUserForm by remember { mutableStateOf(false) }
+    var isOpenEditUserForm by remember { mutableStateOf(false) }
     val db = DataBaseObject.addFilePath("database.json").addKeyField("id").addSerializer(People.serializer())
         .createDataBase<People>()
     val viewModel = viewModel { MainScreenViewModel(db) }
@@ -41,9 +47,19 @@ fun App() {
     MaterialTheme {
         Scaffold(
             topBar = {
-                TopBarPrimary(buttonTitle = "Добавить пользователя", actionOnClick = {
-                    isOpenAddUserForm = true
-                })
+                TopBarPrimary(
+                    actionOnClick = {
+                        isOpenAddUserForm = true
+                    },
+                    deleteActionOnClick = {
+                        isOpenDeleteUserForm = true
+                    }, searchActionOnClick = {
+                        isOpenSearchUserForm = true
+                    },
+                    editActionOnClick = {
+                        isOpenEditUserForm = true
+                    }
+                )
             }
         ) {
             DataBaseViewScreen(
@@ -51,16 +67,30 @@ fun App() {
             )
             if (isOpenAddUserForm) {
                 FormAddUser(
+                    vm = viewModel,
                     onConfirm = {
-                        viewModel.addUser(
-                            id = "1",
-                            name = "Iliya",
-                            age = "23",
-                            isActive = "true",
-                            role = "ADMIN"
-                        )
+                        viewModel.addUser()
                     },
                     onDismiss = { isOpenAddUserForm = false }
+                )
+            }
+            if (isOpenDeleteUserForm) {
+                FormDeletePeople(
+                    vm = viewModel,
+                    onConfirm = { viewModel.deleteUser() },
+                    onDismiss = { isOpenDeleteUserForm = false })
+            }
+            if (isOpenSearchUserForm) {
+                FormSearchPeople(
+                    vm = viewModel,
+                    onDismiss = { isOpenSearchUserForm = false }
+                )
+            }
+            if (isOpenEditUserForm) {
+                FormEditUser(
+                    vm = viewModel,
+                    onConfirm = { viewModel.editPeople() },
+                    onDismiss = { isOpenEditUserForm = false }
                 )
             }
         }

@@ -3,7 +3,6 @@ package dataBase
 import coreDB.DataBase
 import coreDBimport.DataBaseCore
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializer
 
 object DataBaseObject {
     private var filePath: String? = null

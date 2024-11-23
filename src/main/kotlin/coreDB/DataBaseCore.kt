@@ -62,22 +62,33 @@ class DataBaseCore<T : Any>(
     // Удаление записи по значению поля
     override fun deleteRecordByField(field: String, value: Any?) {
         val tempFile = File("$filePath.tmp")
-        val tempIndex = File("$indexPath.tmp")
         val file = File(filePath)
         var deletedCount = 0
 
-        file.forEachLine { line ->
-            val record = Json.decodeFromString(serializer, line)
-            if (record.getFieldValue(field) != value) {
-                tempFile.appendText(line + "\n")
-            } else {
-                deletedCount++
+        // Открываем временный файл для записи
+        tempFile.bufferedWriter().use { writer ->
+            file.forEachLine { line ->
+                if (line.isNotBlank()) { // Игнорируем пустые строки
+                    val record = Json.decodeFromString(serializer, line)
+                    val fieldValue = record.getFieldValue(field)
+                    if (fieldValue?.toString() == value?.toString()) {
+                        deletedCount++
+                        println("Deleting record with $field=$value")
+                    } else {
+                        writer.write(line)
+                        writer.newLine()
+                    }
+                }
             }
         }
 
-        tempFile.renameTo(file)
-        rebuildIndex()
-        println("Deleted $deletedCount record(s).")
+        // Переносим временный файл на место оригинального
+        if (file.delete() && tempFile.renameTo(file)) {
+            rebuildIndex() // Перестраиваем индекс
+            println("Deleted $deletedCount record(s).")
+        } else {
+            println("Failed to replace the original file. Deletion aborted.")
+        }
     }
 
     // Поиск записи по ключевому полю
@@ -103,27 +114,49 @@ class DataBaseCore<T : Any>(
         }
     }
 
-    // Редактирование записи
     override fun editRecord(keyValue: Any, updateRecord: T): Boolean {
         val tempFile = File("$filePath.tmp")
         val file = File(filePath)
         var updated = false
 
-        file.forEachLine { line ->
-            val record = Json.decodeFromString(serializer, line)
-            if (record.getFieldValue(keyField) == keyValue) {
-                tempFile.appendText(Json.encodeToString(serializer, updateRecord) + "\n")
-                updated = true
-            } else {
-                tempFile.appendText(line + "\n")
+        tempFile.bufferedWriter().use { writer ->
+            file.forEachLine { line ->
+                if (line.isNotBlank()) { // Игнорируем пустые строки
+                    val record = Json.decodeFromString(serializer, line)
+                    val fieldValue = record.getFieldValue(keyField)
+
+                    // Приведение к строке для корректного сравнения
+                    if (fieldValue?.toString() == keyValue.toString()) {
+                        writer.write(Json.encodeToString(serializer, updateRecord))
+                        writer.newLine()
+                        updated = true
+                    } else {
+                        writer.write(line)
+                        writer.newLine()
+                    }
+                }
             }
         }
 
-        tempFile.renameTo(file)
-        rebuildIndex()
-        println(if (updated) "Record updated successfully." else "Record not found.")
-        return updated
+        println("Temp file exists: ${tempFile.exists()}")
+        println("Original file exists: ${file.exists()}")
+
+        if (file.delete()) {
+            println("Original file deleted.")
+            if (tempFile.renameTo(file)) {
+                rebuildIndex() // Перестраиваем индекс
+                println(if (updated) "Record updated successfully." else "Record not found.")
+                return updated
+            } else {
+                println("Failed to rename temp file to original file.")
+                return false
+            }
+        } else {
+            println("Failed to delete the original file.")
+            return false
+        }
     }
+
 
     // Создание резервной копии
     override fun createBackup(backupPath: String) {
@@ -142,7 +175,14 @@ class DataBaseCore<T : Any>(
     private fun T.getFieldValue(fieldName: String): Any? {
         return this::class.members
             .firstOrNull { it.name == fieldName }
-            ?.call(this)
+            ?.let { member ->
+                try {
+                    member.call(this)
+                } catch (e: Exception) {
+                    println("Error getting field value: ${e.message}")
+                    null
+                }
+            }
     }
 
     // Обновление индекса

@@ -4,72 +4,59 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Card
 import androidx.compose.material.Text
-import androidx.compose.material.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import ui.elements.Body
+import ui.elements.FieldWithTitle
+import ui.elements.TableScreen
+import viewModel.MainScreenViewModel
 
 @Composable
 fun FormAddUser(
+    vm: MainScreenViewModel,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
-    idValue: String = "",
-    nameValue: String = "",
-    ageValue: String = "",
-    isActiveValue: String = "",
-    roleValue: String = ""
 ) {
-    var idValueRemember by remember { mutableStateOf(idValue) }
-    var nameValueRemember by remember { mutableStateOf(nameValue) }
-    var ageValueRemember by remember { mutableStateOf(ageValue) }
-    var isActiveValueRemember by remember { mutableStateOf(isActiveValue) }
-    var roleValueRemember by remember { mutableStateOf(roleValue) }
+    val idValueRemember by vm.id.collectAsState()
+    val nameValueRemember by vm.name.collectAsState()
+    val ageValueRemember by vm.age.collectAsState()
+    val isActiveValueRemember by vm.isActive.collectAsState()
+    val roleValueRemember by vm.role.collectAsState()
     Dialog(
         onDismissRequest = {
+            with(vm) {
+                setPeopleId("")
+                setPeopleName("")
+                setPeopleAge("")
+                setPeopleIsActive("")
+                setPeopleRole("")
+            }
             onDismiss()
         },
     ) {
         Card(modifier = Modifier.fillMaxSize().padding(20.dp)) {
             Body(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(text = "Id", modifier = Modifier.weight(.2f))
-                        TextField(value = idValueRemember, onValueChange = { it -> idValueRemember = it })
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(text = "Name", modifier = Modifier.weight(.2f))
-                        TextField(value = nameValueRemember, onValueChange = { it -> nameValueRemember = it })
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(text = "Age", modifier = Modifier.weight(.2f))
-                        TextField(value = ageValueRemember, onValueChange = { it -> ageValueRemember = it })
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(text = "IsActive", modifier = Modifier.weight(.2f))
-                        TextField(value = isActiveValueRemember, onValueChange = { it -> isActiveValueRemember = it })
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(text = "role", modifier = Modifier.weight(.2f))
-                        TextField(value = roleValueRemember, onValueChange = { it -> roleValueRemember = it })
-                    }
+                    FieldWithTitle(title = "Id", value = idValueRemember, onValueChange = { it -> vm.setPeopleId(it) })
+                    FieldWithTitle(
+                        title = "Name",
+                        value = nameValueRemember,
+                        onValueChange = { it -> vm.setPeopleName(it) })
+                    FieldWithTitle(
+                        title = "Age",
+                        value = ageValueRemember,
+                        onValueChange = { it -> vm.setPeopleAge(it) })
+                    FieldWithTitle(
+                        title = "IsActive",
+                        value = isActiveValueRemember,
+                        onValueChange = { it -> vm.setPeopleIsActive(it) })
+                    FieldWithTitle(
+                        title = "Role",
+                        value = roleValueRemember,
+                        onValueChange = { it -> vm.setPeopleRole(it) })
                 }
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -83,3 +70,147 @@ fun FormAddUser(
         }
     }
 }
+
+@Composable
+fun FormDeletePeople(
+    vm: MainScreenViewModel,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val fieldType by vm.fieldType.collectAsState()
+    val fieldValue by vm.fieldValue.collectAsState()
+
+    Dialog(onDismissRequest = {
+        vm.setFieldType("")
+        vm.setFieldValue("")
+        onDismiss()
+    }) {
+        Card(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            Body(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = "Удаление по полю")
+                    FieldWithTitle(title = "Поле", value = fieldType, onValueChange = { it -> vm.setFieldType(it) })
+                    FieldWithTitle(
+                        title = "Значение",
+                        value = fieldValue,
+                        onValueChange = { it -> vm.setFieldValue(it) })
+                }
+            }
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text(text = "Отменить", modifier = Modifier.clickable { onDismiss() })
+                        Text(text = "Удалить", modifier = Modifier.clickable { onConfirm() })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FormSearchPeople(
+    vm: MainScreenViewModel,
+    onDismiss: () -> Unit,
+) {
+    val fieldType by vm.fieldType.collectAsState()
+    val fieldValue by vm.fieldValue.collectAsState()
+    val searchResult by vm.searchResult.collectAsState()
+
+    Dialog(onDismissRequest = {
+        vm.setFieldType("")
+        vm.setFieldValue("")
+        onDismiss()
+    }) {
+        Card(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            Body(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = "Поиск пользователя по полю")
+                    FieldWithTitle(title = "Поле", value = fieldType, onValueChange = { it -> vm.setFieldType(it) })
+                    FieldWithTitle(
+                        title = "Значение",
+                        value = fieldValue,
+                        onValueChange = { it -> vm.setFieldValue(it) })
+                }
+                TableScreen(if (searchResult == null) listOf() else listOf(searchResult!!))
+            }
+
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text(text = "Отменить", modifier = Modifier.clickable { onDismiss() })
+                        Text(text = "Найти", modifier = Modifier.clickable { vm.searchByField() })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FormEditUser(
+    vm: MainScreenViewModel,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val idValueRemember by vm.id.collectAsState()
+
+    val newIdPeople by vm.newIdPeople.collectAsState()
+    val nameValueRemember by vm.name.collectAsState()
+    val ageValueRemember by vm.age.collectAsState()
+    val isActiveValueRemember by vm.isActive.collectAsState()
+    val roleValueRemember by vm.role.collectAsState()
+    Dialog(
+        onDismissRequest = {
+            with(vm) {
+                setPeopleId("")
+                setPeopleName("")
+                setPeopleAge("")
+                setPeopleIsActive("")
+                setPeopleRole("")
+            }
+            onDismiss()
+        },
+    ) {
+        Card(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            Body(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FieldWithTitle(
+                        title = "Id пользователя",
+                        value = newIdPeople,
+                        onValueChange = { it -> vm.setNewPeopleId(it) })
+                    FieldWithTitle(
+                        title = "Id",
+                        value = idValueRemember,
+                        onValueChange = { it -> vm.setPeopleId(it) })
+                    FieldWithTitle(
+                        title = "Name",
+                        value = nameValueRemember,
+                        onValueChange = { it -> vm.setPeopleName(it) })
+                    FieldWithTitle(
+                        title = "Age",
+                        value = ageValueRemember,
+                        onValueChange = { it -> vm.setPeopleAge(it) })
+                    FieldWithTitle(
+                        title = "IsActive",
+                        value = isActiveValueRemember,
+                        onValueChange = { it -> vm.setPeopleIsActive(it) })
+                    FieldWithTitle(
+                        title = "Role",
+                        value = roleValueRemember,
+                        onValueChange = { it -> vm.setPeopleRole(it) })
+                }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(text = "Отменить", modifier = Modifier.clickable { onDismiss() })
+                            Text(text = "Изменить", modifier = Modifier.clickable { onConfirm() })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
