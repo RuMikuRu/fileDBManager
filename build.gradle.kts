@@ -26,6 +26,11 @@ dependencies {
     implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("com.darkrockstudios:mpfilepicker:3.1.0")
+    implementation("org.apache.poi:poi:5.3.0")
+    implementation("org.apache.poi:poi-ooxml:5.3.0")
+    implementation ("io.github.ehsannarmani:compose-charts:0.0.18")
+    implementation("io.github.serpro69:kotlin-faker:2.0.0-rc.7")
     implementation(kotlin("reflect"))
 }
 

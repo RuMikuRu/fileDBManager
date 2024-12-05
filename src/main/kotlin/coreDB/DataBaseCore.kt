@@ -2,15 +2,21 @@ package coreDBimport
 
 import coreDB.DataBase
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationStrategy
 
 import kotlinx.serialization.json.*
+import kotlinx.serialization.serializer
+import org.apache.poi.ss.usermodel.CellType
+import org.apache.poi.ss.usermodel.WorkbookFactory
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.*
+import kotlin.jvm.java
 
 class DataBaseCore<T : Any>(
     private val filePath: String,
     private val keyField: String,
     private val serializer: KSerializer<T>
-):DataBase<T> {
+) : DataBase<T> {
     private val indexPath = "$filePath.index"
 
     init {
@@ -160,7 +166,8 @@ class DataBaseCore<T : Any>(
 
     // Создание резервной копии
     override fun createBackup(backupPath: String) {
-        File(filePath).copyTo(File(backupPath), overwrite = true)
+        println(backupPath)
+        File(filePath).copyTo(File(backupPath + File.separator + "backup.json"), overwrite = true)
         println("Backup created successfully.")
     }
 
@@ -170,6 +177,118 @@ class DataBaseCore<T : Any>(
         rebuildIndex()
         println("Database restored from backup.")
     }
+
+    override fun importFromExcel(
+        excelFilePath: String,
+    ): Boolean {
+        val file = File(excelFilePath)
+        if (!file.exists()) {
+            println("Excel file not found at path: $excelFilePath")
+            return false
+        }
+
+        try {
+            FileInputStream(file).use { fis ->
+                val workbook = WorkbookFactory.create(fis)
+                val sheet = workbook.getSheetAt(0) // Используем первый лист
+
+                // Заголовки колонок
+                val headers = sheet.getRow(0)?.map { it.stringCellValue } ?: emptyList()
+                if (headers.isEmpty()) {
+                    println("No headers found in the Excel sheet.")
+                    return false
+                }
+
+                // Обрабатываем каждую строку, начиная со второй (первая — заголовок)
+                for (row in sheet) {
+                    if (row.rowNum == 0) continue // Пропускаем строку заголовков
+                    val recordFields = mutableMapOf<String, Any?>()
+
+                    for (cell in row) {
+                        val value = when (cell.cellType) {
+                            CellType.STRING -> cell.stringCellValue
+                            CellType.NUMERIC -> cell.numericCellValue
+                            CellType.BOOLEAN -> cell.booleanCellValue
+                            else -> null
+                        }
+                        val columnName = headers.getOrNull(cell.columnIndex)
+                        if (columnName != null) {
+                            recordFields[columnName] = value
+                        }
+                    }
+
+                    // Преобразуем Map в JSON-строку и десериализуем в объект типа T
+                    val jsonElement = Json.encodeToJsonElement(recordFields)
+                    val jsonObject = jsonElement.jsonObject
+                    val record = Json.decodeFromJsonElement(serializer, jsonObject)
+
+                    // Добавляем запись в базу
+                    addRecord(record)
+                }
+                workbook.close()
+            }
+            println("Data imported successfully from Excel.")
+            return true
+        } catch (e: Exception) {
+            println("Error while importing data from Excel: ${e.message}")
+            e.printStackTrace()
+            return false
+        }
+    }
+
+
+    override fun exportToExcel(excelFilePath: String): Boolean {
+        try {
+            // Создаем книгу и лист Excel
+            val workbook = XSSFWorkbook()
+            val sheet = workbook.createSheet("Database Records")
+
+            // Получаем записи из базы данных
+            val records = getAllRecords()
+
+            // Если записи пусты, сообщаем об этом
+            if (records.isEmpty()) {
+                println("No records to export.")
+                return false
+            }
+
+            // Генерация заголовков
+            val firstRecord = records.first()
+            val headers = firstRecord::class.members
+                .filter { it.parameters.size == 1 } // Оставляем только свойства
+                .map { it.name }
+
+            // Записываем заголовки в первую строку
+            val headerRow = sheet.createRow(0)
+            headers.forEachIndexed { index, header ->
+                val cell = headerRow.createCell(index)
+                cell.setCellValue(header)
+            }
+
+            // Записываем данные записей
+            records.forEachIndexed { rowIndex, record ->
+                val row = sheet.createRow(rowIndex + 1)
+                headers.forEachIndexed { colIndex, fieldName ->
+                    val fieldValue = record.getFieldValue(fieldName)?.toString() ?: ""
+                    val cell = row.createCell(colIndex)
+                    cell.setCellValue(fieldValue)
+                }
+            }
+
+            // Сохраняем Excel-файл
+            FileOutputStream(excelFilePath).use { fos ->
+                workbook.write(fos)
+            }
+            workbook.close()
+
+            println("Data exported successfully to $excelFilePath.")
+            return true
+        } catch (e: Exception) {
+            println("Error while exporting data to Excel: ${e.message}")
+            return false
+        }
+    }
+
 
     // Получение значения поля объекта
     private fun T.getFieldValue(fieldName: String): Any? {

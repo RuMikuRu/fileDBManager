@@ -36,6 +36,9 @@ class MainScreenViewModel(private val db: DataBase<People>) : BaseViewModelCorou
     private val _newIdPeople = MutableStateFlow("")
     val newIdPeople = _newIdPeople.asStateFlow()
 
+    private val _path = MutableStateFlow("")
+    val path = _path.asStateFlow()
+
     init {
         updateTable()
     }
@@ -119,6 +122,24 @@ class MainScreenViewModel(private val db: DataBase<People>) : BaseViewModelCorou
         })
     }
 
+    fun createBackup() {
+        doWork(doOnAsyncBlock = {
+            if (_path.value != "") {
+                db.createBackup(_path.value)
+            }
+        })
+    }
+
+    fun openDataBase(){
+        doWork(
+            doOnAsyncBlock = {
+                if(_path.value != ""){
+                    db.restoreFromBackup(_path.value)
+                }
+            }
+        )
+    }
+
     fun setPeopleId(id: String) {
         this._id.update { id }
     }
@@ -161,8 +182,11 @@ class MainScreenViewModel(private val db: DataBase<People>) : BaseViewModelCorou
         }
     }
 
+    fun setPath(path: String) {
+        this._path.update { path }
+    }
 
-    private fun updateTable() {
+    fun updateTable() {
         _userList.update {
             db.getAllRecords()
         }

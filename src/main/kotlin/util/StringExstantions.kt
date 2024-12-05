@@ -14,9 +14,9 @@ fun String.toBoolean(): Boolean {
 }
 
 fun String.toRole(): Role {
-    return when (this) {
-        "USER" -> Role.USER
-        "ADMIN" -> Role.ADMIN
+    return when (this.toLowerCase()) {
+        "user" -> Role.USER
+        "admin" -> Role.ADMIN
         else -> {
             throw Exception("$this is not ${Role.entries.toTypedArray()}")
         }
