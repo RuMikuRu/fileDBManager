@@ -132,7 +132,7 @@ fun FormSearchPeople(
                         value = fieldValue,
                         onValueChange = { it -> vm.setFieldValue(it) })
                 }
-                TableScreen(if (searchResult == null) listOf() else listOf(searchResult!!))
+                TableScreen(searchResult)
             }
 
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {

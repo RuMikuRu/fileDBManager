@@ -49,7 +49,7 @@ class DataBaseCore<T : Any>(
             return false
         }
 
-        if (searchByField(keyField, keyValue) != null) {
+        if (searchByField(keyField, keyValue).isNotEmpty()) {
             println("Duplicate key found. Record not added.")
             return false
         }
@@ -98,26 +98,38 @@ class DataBaseCore<T : Any>(
     }
 
     // Поиск записи по ключевому полю
-    override fun searchByField(field: String, value: Any?): T? {
-        var result: T? = null
+    override fun searchByField(field: String, value: Any?): List<T> {
+        val results = mutableListOf<T>()
+
         if (field != keyField) {
             // Обычный линейный поиск для неключевых полей
             File(filePath).forEachLine { line ->
                 val record = Json.decodeFromString(serializer, line)
                 if (record.getFieldValue(field) == value) {
-                    result = record
+                    results.add(record)
                 }
             }
-            return result
+            return results
         }
 
-        // Быстрый поиск по индексу
-        val offset = findOffsetInIndex(value.toString()) ?: return null
+        // Быстрый поиск по индексу для ключевого поля
+        val offset = findOffsetInIndex(value.toString()) ?: return results // Пустой список, если индекс не найден
         RandomAccessFile(filePath, "r").use { raf ->
             raf.seek(offset)
-            val line = raf.readLine()
-            return Json.decodeFromString(serializer, line)
+            while (true) {
+                val line = raf.readLine() ?: break
+                val record = Json.decodeFromString(serializer, line)
+                val keyFieldValue = record.getFieldValue(keyField)
+
+                if (keyFieldValue?.toString() == value?.toString()) {
+                    results.add(record)
+                } else {
+                    break // Останавливаем поиск, если значение ключевого поля больше не совпадает
+                }
+            }
         }
+
+        return results
     }
 
     override fun editRecord(keyValue: Any, updateRecord: T): Boolean {
@@ -276,7 +288,7 @@ class DataBaseCore<T : Any>(
             }
 
             // Сохраняем Excel-файл
-            FileOutputStream(excelFilePath).use { fos ->
+            FileOutputStream(excelFilePath + File.separator + "backap.xls").use { fos ->
                 workbook.write(fos)
             }
             workbook.close()

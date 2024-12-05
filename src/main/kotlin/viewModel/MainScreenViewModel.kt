@@ -30,7 +30,7 @@ class MainScreenViewModel(private val db: DataBase<People>) : BaseViewModelCorou
     val fieldType = _fieldType.asStateFlow()
     val fieldValue = _fieldValue.asStateFlow()
 
-    private val _searchResult = MutableStateFlow<People?>(null)
+    private val _searchResult = MutableStateFlow<List<People>>(listOf())
     val searchResult = _searchResult.asStateFlow()
 
     private val _newIdPeople = MutableStateFlow("")
@@ -85,7 +85,7 @@ class MainScreenViewModel(private val db: DataBase<People>) : BaseViewModelCorou
         doWork(doOnAsyncBlock = {
             if (_fieldType.value != "") {
                 _searchResult.update {
-                    when (_fieldType.value.toLowerCase()) {
+                    val result = when (_fieldType.value.toLowerCase()) {
                         "id" -> db.searchByField(field = _fieldType.value, value = _fieldValue.value.toInt())
                         "name" -> db.searchByField(field = _fieldType.value, value = _fieldValue.value)
                         "age" -> db.searchByField(field = _fieldType.value, value = _fieldValue.value.toInt())
@@ -96,8 +96,11 @@ class MainScreenViewModel(private val db: DataBase<People>) : BaseViewModelCorou
 
                         "role" -> db.searchByField(field = _fieldType.value, value = _fieldValue.value.toRole())
                         else -> {
-                            throw Exception("User not found")
+                            listOf()
                         }
+                    }
+                    result.ifEmpty {
+                        listOf()
                     }
                 }
             }
@@ -118,6 +121,21 @@ class MainScreenViewModel(private val db: DataBase<People>) : BaseViewModelCorou
                     )
                 )
                 updateTable()
+            }
+        })
+    }
+
+    fun exportToExcel(filePath: String) {
+        doWork(doOnAsyncBlock = {
+            if (filePath.isNotBlank()) {
+                val isSuccess = db.exportToExcel(filePath)
+                if (isSuccess) {
+                    println("Data exported successfully to Excel at $filePath")
+                } else {
+                    println("Failed to export data to Excel.")
+                }
+            } else {
+                println("File path is empty. Please provide a valid path.")
             }
         })
     }

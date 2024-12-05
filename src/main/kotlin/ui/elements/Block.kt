@@ -134,8 +134,9 @@ fun ModalDrawerNavigation(
             showFilePicker = true
             ActionFile.RE_BACKUP
         }
-        DrawerItem(title = "Импорт в Exel") {
-
+        DrawerItem(title = "Экспорт в Exel") {
+            showDirectoryPicker = true
+            state = ActionFile.EXPORT_EXEL
         }
         DrawerItem(title = "Стресс тест") {
             vmCharts.setChartsIsOpen(!stateCharts)
@@ -143,8 +144,12 @@ fun ModalDrawerNavigation(
     }
     DirectoryPicker(show = showDirectoryPicker) { path ->
         showDirectoryPicker = false
-        vm.setPath(path ?: "")
-        vm.createBackup()
+        if(state == ActionFile.EXPORT_EXEL){
+            vm.exportToExcel(path ?: "")
+        } else {
+            vm.setPath(path ?: "")
+            vm.createBackup()
+        }
     }
     FilePicker(show = showFilePicker, fileExtensions = listOf("json")) { path ->
         when (state) {
@@ -157,6 +162,8 @@ fun ModalDrawerNavigation(
                 vm.setPath(path?.path ?: "")
                 vm.openDataBase()
             }
+
+            ActionFile.EXPORT_EXEL -> TODO()
         }
         showFilePicker = false
     }
@@ -164,7 +171,8 @@ fun ModalDrawerNavigation(
 
 enum class ActionFile {
     OPEN,
-    RE_BACKUP
+    RE_BACKUP,
+    EXPORT_EXEL
 }
 
 @Composable

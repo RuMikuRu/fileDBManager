@@ -22,22 +22,6 @@ import ui.screen.DataBaseViewScreen
 import viewModel.ChartScreenViewModel
 import viewModel.MainScreenViewModel
 
-val mockUserList = listOf(
-    People(
-        id = 1L,
-        name = "Iliya",
-        age = 10,
-        isActive = true,
-        role = Role.ADMIN
-    ),
-    People(
-        id = 1L,
-        name = "Iliya",
-        age = 10,
-        isActive = true,
-        role = Role.ADMIN
-    )
-)
 
 @Composable
 fun App() {
