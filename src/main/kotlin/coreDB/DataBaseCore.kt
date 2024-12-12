@@ -35,8 +35,14 @@ class DataBaseCore<T : Any>(
     override fun getAllRecords(): List<T> {
         val records = mutableListOf<T>()
         File(filePath).forEachLine { line ->
-            val record = Json.decodeFromString(serializer, line)
-            records.add(record)
+            if (line.isNotBlank()) {
+                try {
+                    val record = Json.decodeFromString(serializer, line)
+                    records.add(record)
+                } catch (e: Exception) {
+                    println("Skipping malformed line: $line. Error: ${e.message}")
+                }
+            }
         }
         return records
     }
@@ -104,27 +110,34 @@ class DataBaseCore<T : Any>(
         if (field != keyField) {
             // Обычный линейный поиск для неключевых полей
             File(filePath).forEachLine { line ->
-                val record = Json.decodeFromString(serializer, line)
-                if (record.getFieldValue(field) == value) {
-                    results.add(record)
+                if (line.isNotBlank()) { // Проверяем, что строка не пустая
+                    try {
+                        val record = Json.decodeFromString(serializer, line)
+                        if (record.getFieldValue(field) == value) {
+                            results.add(record)
+                        }
+                    } catch (e: Exception) {
+                        println("Error decoding line: $line, ${e.message}")
+                    }
                 }
             }
             return results
         }
 
         // Быстрый поиск по индексу для ключевого поля
-        val offset = findOffsetInIndex(value.toString()) ?: return results // Пустой список, если индекс не найден
+        val offset = findOffsetInIndex(value.toString()) ?: return results
         RandomAccessFile(filePath, "r").use { raf ->
             raf.seek(offset)
             while (true) {
                 val line = raf.readLine() ?: break
-                val record = Json.decodeFromString(serializer, line)
-                val keyFieldValue = record.getFieldValue(keyField)
-
-                if (keyFieldValue?.toString() == value?.toString()) {
-                    results.add(record)
-                } else {
-                    break // Останавливаем поиск, если значение ключевого поля больше не совпадает
+                if (line.isNotBlank()) { // Проверяем, что строка не пустая
+                    val record = Json.decodeFromString(serializer, line)
+                    val keyFieldValue = record.getFieldValue(keyField)
+                    if (keyFieldValue?.toString() == value?.toString()) {
+                        results.add(record)
+                    } else {
+                        break // Останавливаем поиск, если ключ больше не совпадает
+                    }
                 }
             }
         }
@@ -185,9 +198,20 @@ class DataBaseCore<T : Any>(
 
     // Восстановление из резервной копии
     override fun restoreFromBackup(backupPath: String) {
-        File(backupPath).copyTo(File(filePath), overwrite = true)
-        rebuildIndex()
-        println("Database restored from backup.")
+        try {
+            File(backupPath).copyTo(File(filePath), overwrite = true)
+            println("Backup restored to $filePath. Rebuilding index...")
+            rebuildIndex()
+
+            // Проверяем содержимое базы данных и индекса
+            val dbContent = File(filePath).readText()
+            val indexContent = File(indexPath).readText()
+            println("Database content:\n$dbContent")
+            println("Index content:\n$indexContent")
+        } catch (e: Exception) {
+            println("Error restoring from backup: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     override fun importFromExcel(
@@ -324,16 +348,35 @@ class DataBaseCore<T : Any>(
     // Построение индекса с нуля
     private fun rebuildIndex() {
         val indexFile = File(indexPath)
-        indexFile.writeText("") // Очищаем старый индекс
+        val dbFile = File(filePath)
+
+        // Проверка наличия файла базы данных
+        if (!dbFile.exists() || !dbFile.canRead()) {
+            println("Database file $filePath is missing or unreadable.")
+            return
+        }
+
+        // Очищаем старый индекс
+        indexFile.writeText("")
         var offset = 0L
-        File(filePath).forEachLine { line ->
-            val record = Json.decodeFromString(serializer, line)
-            val keyValue = record.getFieldValue(keyField)?.toString()
-            if (keyValue != null) {
-                indexFile.appendText("$keyValue:$offset\n")
+
+        dbFile.forEachLine { line ->
+            if (line.isNotBlank()) { // Игнорируем пустые строки
+                try {
+                    val record = Json.decodeFromString(serializer, line)
+                    val keyValue = record.getFieldValue(keyField)?.toString()
+
+                    if (keyValue != null) {
+                        indexFile.appendText("$keyValue:$offset\n")
+                    }
+                } catch (e: Exception) {
+                    println("Error rebuilding index: ${e.message}")
+                }
             }
             offset += line.toByteArray().size + 1 // Учитываем символ новой строки
         }
+
+        println("Index rebuilt successfully.")
     }
 
     // Поиск смещения записи по ключу в индексе
